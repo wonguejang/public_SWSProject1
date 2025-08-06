@@ -18,7 +18,7 @@ api키가 만료되거나 오류시 db에 저장된 값들을 화면에 보여�
 
 1. 화면 비율은 1920 X 1080으로 이용해주세요
 
-2. application,properties에 riot.api.key = '발급받으신 api키' 를 추가해주세요
+2. application,properties에 riot.api.key = '발급받으신 api키' 를 추가해주세요 <br/>
  -> api 키 발급 받기 (https://developer.riotgames.com/)에 방문하시어 로그인 후 발급 (일반유저는 24시간의 유효기간을 가집니다)
 
 3. 구글로그인 api사용시 id를 발급받고 secret코드도 받으셔야 쓸 수 있습니다. 
