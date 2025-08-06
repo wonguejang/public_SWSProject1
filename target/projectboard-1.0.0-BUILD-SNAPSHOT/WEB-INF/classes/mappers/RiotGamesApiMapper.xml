@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="RiotGamesApiMapper">
+	<!-- 랭킹 화면에서 뿌려줄 작업들 -->
+	<select id = "selectRocationChampById" resultType = "com.wg.dto.RiotDto.ChampionsDto">
+		<![CDATA[
+			SELECT *
+			FROM champions
+			WHERE champ_id = #{champId}
+		]]>
+	</select>
+	
+	<!-- 소환사 아이디로 있는지확인 있으면 업뎃 없으면 인서트 -->
+	<select id = "selectCheckSummonerId" resultType = "java.lang.Integer">
+		<![CDATA[
+			SELECT COUNT(*)
+			FROM summoner_info
+			WHERE summoner_id = #{summonerId}
+		]]>	
+	</select>
+	
+	<!-- puuid가 있는지 확인 -->
+	<select id = "selectCheckPuuid" resultType = "java.lang.Integer">
+		<![CDATA[
+			SELECT COUNT(*)
+			FROM summoner_info
+			WHERE puuid = #{puuid}
+		]]>
+	</select>
+	
+	<!-- 랭킹을 받아와서 인서트하기(없을때) -->
+	<insert id = "insertRankingBoard">
+		<![CDATA[
+			INSERT INTO summoner_info (summoner_id, ranks, league_points, winrate, win ,lose, puuid)
+			VALUES (#{summonerId}, #{ranks}, #{leaguePoints}, #{winRate}, #{win}, #{lose},#{puuid})
+		]]>
+	</insert>
+	
+	<!-- 랭킹에 이름이 이미 있으면 업데이트 -->
+	<update id = "updateSommonerByRankingBoard">
+		<![CDATA[
+			UPDATE summoner_info
+			SET ranks = #{ranks}, league_points = #{leaguePoints}, winrate = #{winRate}, win = #{win}, lose = #{lose}, puuid = #{puuid}
+			WHERE summoner_id = #{summonerId} OR puuid = #{puuid}
+		]]>
+	</update>
+	
+	<!-- 소환사 puuid가 있는지 -->
+	<select id = "selectIconIsNull" resultType = "java.lang.Integer">
+		<![CDATA[
+			SELECT COUNT(*)
+			FROM summoner_info
+			WHERE puuid = #{puuid} AND summoner_icon IS NULL
+		]]>
+	</select>
+	
+	<!-- 위의 결과에 따라 진행할 업데이트문 -->
+	<update id = "updateSummonerIcon">
+		<![CDATA[
+			UPDATE summoner_info
+			SET summoner_icon = #{summonerIcon}
+			WHERE puuid = #{puuid}
+		]]>
+	</update>
+	
+	<!-- 여기서 로테이션 정보 받아서 select하기 -->
+	<!-- 챔피언아이디 승리 -->
+	<select id = "selectChampByIdForWin" resultType = "com.wg.dto.RiotDto.ChampDetailChampionDto">
+		<![CDATA[
+			SELECT champ_name, champ_url, SUM(CASE WHEN team_id = 100 THEN 1 ELSE 0 END) win
+			FROM match_detail md
+			INNER JOIN champions c 
+			ON md.champ_id = c.champ_id
+			WHERE c.champ_id = #{champId}
+			GROUP BY champ_name, champ_url
+		]]>
+	</select>
+	<!-- 챔피언아이디 패배 -->
+	<select id = "selectChampByIdForLose" resultType = "com.wg.dto.RiotDto.ChampDetailChampionDto">
+		<![CDATA[
+			SELECT champ_name, champ_url, SUM(CASE WHEN team_id = 200 THEN 1 ELSE 0 END) lose
+			FROM match_detail md
+			INNER JOIN champions c 
+			ON md.champ_id = c.champ_id
+			WHERE c.champ_id = #{champId}
+			GROUP BY champ_name, champ_url
+		]]>
+	</select>
+	
+	
+</mapper>

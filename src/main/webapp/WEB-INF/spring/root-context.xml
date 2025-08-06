@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans https://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.3.xsd">
+	
+	<!-- Root Context: defines shared resources visible to all other web components -->
+	<bean id="dataSource" class="com.zaxxer.hikari.HikariDataSource">
+		<property name = "driverClassName" value = "oracle.jdbc.driver.OracleDriver"></property>
+		<property name = "jdbcUrl" value = "jdbc:oracle:thin:@13.125.33.67:1521:xe" ></property>
+		<property name = "username" value = "projectdb" ></property>
+		<property name = "password" value = "SangWoo082712" ></property>
+	</bean>	
+	
+	<!-- sql 처리 부분 -->
+	<bean id = "sqlSessionFactory" class = "org.mybatis.spring.SqlSessionFactoryBean">
+		<property name = "dataSource" ref = "dataSource"></property>
+		<property name = "mapperLocations" value = "classpath:mappers/*Mapper.xml"></property>
+		<property name="configLocation" value="classpath:mybatis-config.xml" ></property>
+		<property name="typeAliasesPackage" value="com.wg.dto"/>
+	</bean>	
+	
+	<bean id = "sqlSession" class = "org.mybatis.spring.SqlSessionTemplate" destroy-method = "clearCache">
+		<constructor-arg  name = "sqlSessionFactory" ref = "sqlSessionFactory"></constructor-arg>
+	</bean>
+	
+	<bean id="jdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate">
+    	<property name="dataSource" ref="dataSource" />
+	</bean>
+	
+	<!-- 상우 -->
+	<!-- 1. DAO 인터페이스 자동 등록
+	<bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+	    <property name="basePackage" value="com.wg.dao" />
+	</bean> -->
+	
+	<!-- 2. 이메일 전송 기능 -->
+	<bean id="mailSender" class="org.springframework.mail.javamail.JavaMailSenderImpl">
+	    <property name="host" value="smtp.gmail.com"/>
+	    <property name="port" value="465"/>
+	    <property name="username" value="qkrdndcjf03@gmail.com"/>
+	    <property name="password" value="yitzbazpbqxjfnax"/>
+	    <property name="javaMailProperties">
+	        <props>
+	            <prop key="mail.transport.protocol">smtp</prop>
+	            <prop key="mail.smtp.auth">true</prop>
+	            <prop key="mail.smtp.ssl.enable">true</prop>
+	            <prop key="mail.smtp.starttls.enable">true</prop>
+	            <prop key="mail.smtp.ssl.trust">smtp.gmail.com</prop>
+	            <prop key="mail.debug">true</prop>
+	        </props>
+	    </property>
+	</bean>
+	
+	<!-- 3. 비밀번호 암호화 -->
+	<bean id="passwordEncoder" class="org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder"/>
+	
+	<context:component-scan base-package="com.wg, com.sw, com.hc, util" />
+	<context:property-placeholder location="classpath:application.properties"/>
+		
+</beans>

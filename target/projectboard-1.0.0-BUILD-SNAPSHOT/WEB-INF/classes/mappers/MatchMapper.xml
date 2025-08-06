@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">  <!-- 모든 sql문을 <![CDATA[ (sql자리) ]]> 로 감싸자 -->
+<mapper namespace="matchMapper">
+	<select id="getMatchId" resultType="java.lang.Integer">	
+		<![CDATA[
+		 	SELECT COUNT(*) FROM MATCHS WHERE match_id=#{matchId}
+		]]>
+	</select>
+	<insert id="insertMatch">
+		<![CDATA[
+			INSERT INTO MATCHS(MATCH_ID, END_TIME, PLAY_TIME, WINNER_TEAM) 
+			VALUES (#{match_id}, TO_DATE(#{end_time}, 'YYYY-MM-DD HH24:MI:SS'),#{play_time},#{winner_team})
+		]]>
+	</insert>
+	<insert id="insertMatchDetail">
+		<![CDATA[
+			INSERT INTO MATCH_DETAIL(MATCH_ID, MD_SUMMONER_ID, PLAYER_CHAMP, CHAMP_ID, PLAYER_KILLS, PLAYER_DEATHS, PLAYER_ASSISTS, PLAYER_DAMAGE, TEAM_ID, BAN_PICK, MD_PUUID) 
+			VALUES (#{match_id}, #{md_summoner_id}, #{player_champ}, #{champ_id}, #{player_kills}, #{player_deaths}, #{player_assists}, #{player_damage}, #{team_id}, #{ban_pick}, #{md_puuid})
+		]]>
+	</insert>
+	<insert id="insertMatchItem">
+		<![CDATA[
+			INSERT INTO MATCH_ITEMS(MATCH_ID, MI_SUMMONER_ID, MATCH_ITEM_1, MATCH_ITEM_2, MATCH_ITEM_3, MATCH_ITEM_4, MATCH_ITEM_5, MATCH_ITEM_6, MATCH_ITEM_7) 
+			VALUES (#{matchId}, #{miSummonerId}, #{matchItem1}, #{matchItem2}, #{matchItem3}, #{matchItem4}, #{matchItem5}, #{matchItem6}, #{matchItem7})
+		]]>
+	</insert>
+	<insert id="insertMatchRunes">
+		<![CDATA[
+			INSERT INTO MATCH_RUNES(MATCH_ID, MR_SUMMONER_ID, MATCH_MAIN_RUNE_1, MATCH_MAIN_RUNE_2, MATCH_MAIN_RUNE_3, MATCH_MAIN_RUNE_4, match_sub_rune_1, match_sub_rune_2) 
+			VALUES (#{match_id}, #{mr_summoner_id}, #{match_main_rune_1}, #{match_main_rune_2}, #{match_main_rune_3}, #{match_main_rune_4}, #{match_sub_rune_1}, #{match_sub_rune_2})
+		]]>
+	</insert>
+	<insert id="insertMatchSkills">
+		<![CDATA[
+			INSERT INTO MATCH_SKILLS(MATCH_ID, MS_SUMMONER_ID, MATCH_SKILL_1, MATCH_SKILL_2, MATCH_SKILL_3, MATCH_SKILL_4, MATCH_SKILL_5, MATCH_SKILL_6, MATCH_SKILL_7 ,MATCH_SKILL_8, MATCH_SKILL_9, MATCH_SKILL_10, MATCH_SKILL_11, MATCH_SKILL_12, MATCH_SKILL_13, MATCH_SKILL_14, MATCH_SKILL_15, MATCH_SKILL_16, MATCH_SKILL_17, MATCH_SKILL_18)
+			VALUES (#{match_id}, #{ms_summoner_id}, #{match_skill_1}, #{match_skill_2}, #{match_skill_3}, #{match_skill_4}, #{match_skill_5}, #{match_skill_6}, #{match_skill_7}, #{match_skill_8}, #{match_skill_9}, #{match_skill_10}, #{match_skill_11}, #{match_skill_12}, #{match_skill_13}, #{match_skill_14}, #{match_skill_15}, #{match_skill_16}, #{match_skill_17}, #{match_skill_18})
+		]]>
+	</insert>
+	<insert id="insertMatchSpell">
+		<![CDATA[
+			INSERT INTO MATCH_SPELL(M_SPELL_MATCH_ID, M_SPELL_SUMMONER_ID, MATCH_SPELL_1, MATCH_SPELL_2) 
+			VALUES (#{m_spell_match_id}, #{m_spell_summoner_id}, #{match_spell_1}, #{match_spell_2})
+		]]>
+	</insert>
+	<update id="mergeSummonerInfomation">
+		<![CDATA[
+			MERGE INTO SUMMONER_INFO USING DUAL ON (PUUID = #{puuid}) WHEN MATCHED THEN UPDATE SET
+				SUMMONER_ID = #{summonerId},
+				SUMMONER_CHAMP_NAME = #{summonerChampName},
+				SUMMONER_CHAMP_ID = #{summonerChampId},
+			 	RANKS = #{ranks}, 
+			 	LEAGUE_POINTS = #{leaguePoints}, 
+			 	WINRATE = #{winrate}, 
+			 	WIN = #{win},  
+			 	LOSE = #{lose},  
+			 	SUMMONER_ICON = #{summonerIcon}
+			 	WHEN NOT MATCHED THEN 
+			 	INSERT (SUMMONER_ID, SUMMONER_CHAMP_NAME, SUMMONER_CHAMP_ID, RANKS, LEAGUE_POINTS, WINRATE, WIN, LOSE, SUMMONER_ICON, PUUID)  
+			 	VALUES (#{summonerId}, #{summonerChampName}, #{summonerChampId}, #{ranks}, #{leaguePoints}, #{winrate}, #{win}, #{lose}, #{summonerIcon}, #{puuid})
+		]]>
+	</update>
+	<select id="selectSummonerMainChamp" resultType="map">
+		<![CDATA[
+			SELECT * FROM (SELECT PLAYER_CHAMP, CHAMP_ID, COUNT(*) AS CNT FROM MATCH_DETAIL WHERE MD_PUUID = #{puuid}
+			GROUP BY PLAYER_CHAMP, CHAMP_ID
+			ORDER BY CNT DESC)
+			WHERE ROWNUM <= 1
+		]]>
+	</select>
+	<update id="updateSummonerMainChamp" >
+		<![CDATA[
+			UPDATE SUMMONER_INFO SET SUMMONER_CHAMP_NAME = #{playerChamp}, SUMMONER_CHAMP_ID = #{playerChampId} WHERE PUUID = #{puuid}
+		]]>
+	</update>
+	<insert id="insertMatchShard">
+		<![CDATA[
+			INSERT INTO MATCH_SHARD (MATCH_ID, SUMMONER_ID, OFFENSE, FLEX, DEFENSE)
+			VALUES (#{match_id}, #{summoner_id}, #{offense}, #{flex}, #{defense})
+		]]>
+	</insert>
+	<select id="selectSummonerMainChamp2WithWinRate" resultType="map">
+	  	<![CDATA[
+	    	SELECT *
+			FROM (
+			    SELECT 
+			        PLAYER_CHAMP, 
+			        CHAMP_ID,
+			        COUNT(DISTINCT MD.MATCH_ID) AS TOTAL_CNT,
+			        COUNT(DISTINCT CASE WHEN M.WINNER_TEAM = MD.TEAM_ID THEN MD.MATCH_ID END) AS WIN_CNT,
+			        COUNT(DISTINCT MD.MATCH_ID) - COUNT(DISTINCT CASE WHEN M.WINNER_TEAM = MD.TEAM_ID THEN MD.MATCH_ID END) AS LOSE_CNT,
+			        ROUND(
+			            100.0 * COUNT(DISTINCT CASE WHEN M.WINNER_TEAM = MD.TEAM_ID THEN MD.MATCH_ID END) / COUNT(DISTINCT MD.MATCH_ID),
+			            2
+			        ) AS WIN_RATE,
+			        ROUND(
+			            SUM(MD.PLAYER_KILLS + MD.PLAYER_ASSISTS) / 
+			            DECODE(SUM(MD.PLAYER_DEATHS), 0, 0.5, SUM(MD.PLAYER_DEATHS)),
+			            2
+			        ) AS KDA
+			    FROM MATCH_DETAIL MD
+			    JOIN MATCHS M ON MD.MATCH_ID = M.MATCH_ID
+			    WHERE MD.MD_PUUID = #{puuid}
+			    GROUP BY PLAYER_CHAMP, CHAMP_ID
+			    ORDER BY TOTAL_CNT DESC
+			)
+			WHERE ROWNUM <= 3
+	  ]]>
+	</select>
+		<select id="getOnlyMatchId" parameterType="String" resultType="java.lang.String">
+		<![CDATA[
+			SELECT MATCH_ID FROM MATCH_DETAIL WHERE MD_SUMMONER_ID = #{id}
+		]]>
+	</select>
+	
+	<select id="getOnlyPuuid" resultType="java.lang.String">
+		<![CDATA[
+			SELECT PUUID FROM SUMMONER_INFO WHERE SUMMONER_ID = #{id}
+		]]>	
+	</select>
+	<select id="realList" parameterType="list" resultType="java.lang.String">
+	    <![CDATA[
+	        SELECT MATCH_ID
+	        FROM MATCHS
+	        WHERE MATCH_ID IN
+	    ]]>
+	    <foreach item="id" collection="list" open="(" separator="," close=")">
+	        #{id}
+	    </foreach>
+	    	ORDER BY END_TIME DESC
+	</select>
+</mapper>

@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">  <!-- 모든 sql문을 <![CDATA[ (sql자리) ]]> 로 감싸자 -->
+<mapper namespace="BuildPostMapper">
+	<select id="getBuildPostList" resultType="com.hc.BuildBoardDtoFolder.getBuildPostDto">
+		<![CDATA[
+			SELECT * FROM BUILD_BOARD
+		]]>
+	</select>
+	<select id="getBuildTotalPage" resultType="java.lang.Integer">
+		<![CDATA[
+			SELECT COUNT(*) FROM BUILD_BOARD
+		]]>
+	</select>
+	<select id="selectCheck" resultType="java.lang.Integer">
+		<![CDATA[
+			SELECT B_CHECK FROM BUILD_BOARD WHERE B_BNO = #{bno}
+		]]>
+	</select>
+	<update id="updateCheck">
+		<![CDATA[
+			UPDATE BUILD_BOARD
+			SET B_CHECK = #{inputcheck}
+			WHERE B_BNO = #{bno}
+		]]>
+	</update>
+	<select id="getSelectRating" resultType="java.lang.Integer">
+		<![CDATA[
+			SELECT B_RATING FROM BUILD_BOARD WHERE B_BNO = #{bno}
+		]]>
+	</select>
+	<update id="updateRatingUse">
+		<![CDATA[
+			UPDATE BUILD_BOARD
+			SET B_RATING = #{check}
+			WHERE B_BNO = #{bno}
+		]]>
+	</update>
+	
+	<!-- 패시브 포함한 조회인데 패시브 제외하고 이미지만 먼저 조회함. 나중에 할것 -->
+	<select id="getBuildPostImage" resultType="com.hc.BuildBoardDto.getBuildPostImageDto">
+		<![CDATA[
+			SELECT CHAMP_ID, CHAMP_NAME, CHAMP_URL, P_URL FROM CHAMPIONS ORDER BY CHAMP_NAME
+		]]>
+	</select>
+	<select id="getBuildPostImageSelectChampion" resultType="com.hc.BuildBoardDto.getBuildPostImageDto">
+		<![CDATA[
+			SELECT CHAMP_ID, CHAMP_NAME, CHAMP_URL, P_URL FROM CHAMPIONS WHERE CHAMP_NAME LIKE '%' || #{inputId} || '%' ORDER BY CHAMP_NAME
+		]]>
+	</select>
+	
+	<!-- 스킬 조회인데 이건 일단 패스 디테일 잡을때 활용할 예정 -->
+	<!-- <select id="getBuildPostSkillImage" resultType="com.hc.BuildBoardDto.">
+		<![CDATA[
+			SELECT 
+			    SKILL_CHAMP_NAME,
+			    MAX(CASE WHEN WHAT_SKILL = 'Q' THEN SKILL_URL END) AS Q_URL,
+			    MAX(CASE WHEN WHAT_SKILL = 'W' THEN SKILL_URL END) AS W_URL,
+			    MAX(CASE WHEN WHAT_SKILL = 'E' THEN SKILL_URL END) AS E_URL,
+			    MAX(CASE WHEN WHAT_SKILL = 'R' THEN SKILL_URL END) AS R_URL
+			FROM SKILLS
+			GROUP BY SKILL_CHAMP_NAME
+			ORDER BY SKILL_CHAMP_NAME
+		]]>
+	</select> -->
+	<select id="getBuildPostWriteItemImage" resultType="com.hc.BuildBoardDto.getBuildPostImageItemDto">
+		<![CDATA[
+			SELECT ITEM_ID, ITEM_NAME, ITEM_URL FROM ITEMS ORDER BY ITEM_NAME
+		]]>
+	</select>
+	<select id="getBuildPostWriteItemImageSelect" resultType="com.hc.BuildBoardDto.getBuildPostImageItemDto">
+		<![CDATA[
+			SELECT ITEM_ID, ITEM_NAME, ITEM_URL FROM ITEMS WHERE ITEM_NAME LIKE '%' || #{inputId} || '%' ORDER BY ITEM_NAME
+		]]>
+	</select>
+	
+	<select id="getBuildPostWriteRuneImage" resultType="com.hc.BuildBoardDto.getBuildPostWriteRuneImageDto">
+		<![CDATA[
+			SELECT RUNE_ID, RUNE_NAME, RUNE_URL FROM RUNES ORDER BY RUNE_NAME
+		]]>
+	</select>
+	<select id="getBuildPostWriteRuneImageSelect" resultType="com.hc.BuildBoardDto.getBuildPostWriteRuneImageDto">
+		<![CDATA[
+			SELECT RUNE_ID, RUNE_NAME, RUNE_URL FROM RUNES WHERE RUNE_NAME LIKE '%' || #{inputId} || '%' ORDER BY RUNE_NAME
+		]]>
+	</select>
+	<select id="getBuildPostWriteSpellImage" resultType="com.hc.BuildBoardDto.getBuildPostWriteSpellImageDto">
+		<![CDATA[
+			SELECT SPELL_ID, SPELL_NAME, SPELL_URL FROM SPELLS ORDER BY SPELL_NAME
+		]]>
+	</select>
+	<select id="getBuildPostWriteSpellImageSelect" resultType="com.hc.BuildBoardDto.getBuildPostWriteSpellImageDto">
+		<![CDATA[
+			SELECT SPELL_ID, SPELL_NAME, SPELL_URL FROM SPELLS WHERE SPELL_NAME LIKE '%' || #{inputId} || '%' ORDER BY SPELL_NAME
+		]]>
+	</select>
+	<insert id="insertBuildPost" parameterType="com.hc.BuildBoardDto.getBuildPostDto">
+		<![CDATA[
+			INSERT INTO BUILD_BOARD (B_BNO, B_CHAMP, B_TITLE, B_CONTENT, B_WRITER, B_DATE, B_CHECK, B_RATING) 
+			VALUES (
+					BUILDPOSTSEQUENCE.NEXTVAL,
+					#{bChamp},
+					#{bTitle},
+					#{bContent},
+					#{bWriter},
+					SYSDATE,
+					0,
+					0
+					)
+		]]>
+	</insert>
+	<update id="updateBuildPost" parameterType="com.hc.BuildBoardDto.getBuildPostDto">
+		<![CDATA[
+			UPDATE BUILD_BOARD
+			SET	B_CHAMP = #{bChamp}, 
+				B_TITLE = #{bTitle},
+				B_CONTENT = #{bContent}
+			WHERE B_BNO = #{bBno}
+		]]>
+	</update>
+	<delete id="deleteAllReply">
+		<![CDATA[
+			DELETE FROM REPLY_BOARD
+			WHERE R_B_BOARD_BNO = #{bno}
+		]]>
+	</delete>
+	<delete id="deleteBuildPost">
+		<![CDATA[
+			DELETE FROM BUILD_BOARD WHERE B_BNO = #{bno}
+		]]>
+	</delete>
+	<insert id="insertBuildReply" parameterType="com.hc.BuildBoardDto.ReplyBoardDto">
+	    <![CDATA[
+	        INSERT INTO REPLY_BOARD
+	        (R_WRITER, R_WRITEDATE, R_CONTENT, R_B_BOARD_BNO, RNO)
+	        VALUES
+	        (#{rWriter}, SYSDATE, #{rContent},
+	        #{rBBoardBno},
+	        SEQ_R_BOARD.NEXTVAL
+	        )
+	    ]]>
+	</insert>
+	<select id="getReplies" resultType="com.hc.BuildBoardDto.ReplyBoardDto">
+		<![CDATA[
+			SELECT * FROM REPLY_BOARD WHERE R_B_BOARD_BNO = #{bno} ORDER BY RNO DESC
+		]]>
+	</select>
+	<update id="editBuildReply" parameterType="map">
+	    <![CDATA[
+	        UPDATE REPLY_BOARD
+	        SET R_CONTENT = #{comment,jdbcType=VARCHAR}
+	        WHERE R_B_BOARD_BNO = #{bno,jdbcType=INTEGER} AND RNO = #{rno,jdbcType=INTEGER}
+	    ]]>
+	</update>
+	<delete id="deleteReply">
+		<![CDATA[
+			DELETE FROM REPLY_BOARD WHERE R_B_BOARD_BNO = #{bno} AND RNO = #{rno}
+		]]>
+	</delete>
+</mapper>

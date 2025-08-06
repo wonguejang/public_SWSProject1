@@ -1,0 +1,628 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">  <!-- 모든 sql문을 <![CDATA[ (sql자리) ]]> 로 감싸자 -->
+<mapper namespace="insertBuildMapper">
+	<update id="mergeChampionBuildItem">
+	    <![CDATA[
+	        MERGE INTO CHAMP_BUILD_ITEM target
+	        USING (
+	            WITH RankedItems AS (
+	                SELECT 
+	                    CHAMP_ID,
+	                    ITEM_ID,
+	                    USE_COUNT,
+	                    ROW_NUMBER() OVER (PARTITION BY CHAMP_ID ORDER BY USE_COUNT DESC) AS RNK
+	                FROM (
+	                    SELECT 
+	                        M.CHAMP_ID, 
+	                        I.ITEM_ID,
+	                        COUNT(*) AS USE_COUNT
+	                    FROM (
+	                        SELECT MATCH_ID, MI_SUMMONER_ID, MATCH_ITEM_1 AS ITEM_ID FROM MATCH_ITEMS UNION ALL
+	                        SELECT MATCH_ID, MI_SUMMONER_ID, MATCH_ITEM_2 FROM MATCH_ITEMS UNION ALL
+	                        SELECT MATCH_ID, MI_SUMMONER_ID, MATCH_ITEM_3 FROM MATCH_ITEMS UNION ALL
+	                        SELECT MATCH_ID, MI_SUMMONER_ID, MATCH_ITEM_4 FROM MATCH_ITEMS UNION ALL
+	                        SELECT MATCH_ID, MI_SUMMONER_ID, MATCH_ITEM_5 FROM MATCH_ITEMS UNION ALL
+	                        SELECT MATCH_ID, MI_SUMMONER_ID, MATCH_ITEM_6 FROM MATCH_ITEMS UNION ALL
+	                        SELECT MATCH_ID, MI_SUMMONER_ID, MATCH_ITEM_7 FROM MATCH_ITEMS
+	                    ) I
+	                    JOIN MATCH_DETAIL M ON M.MATCH_ID = I.MATCH_ID AND M.MD_SUMMONER_ID = I.MI_SUMMONER_ID
+	                    WHERE I.ITEM_ID IS NOT NULL AND I.ITEM_ID != 0
+	                   	AND I.ITEM_ID NOT IN (
+	                   		1055, 1042, 1043, 1082, 1037, 1052, 1400,
+			                2003, 2055, 2138, 2139, 2140,
+			                2420, 2421, 2422, 2423, 2424, 2508, 
+			                3006, 3009, 3020, 3035, 3044, 3047, 3067, 3086, 3108, 3111, 3117, 3123, 3147, 3158, 3171, 3172, 3173, 3174, 3340, 3361, 3362, 3363, 3364, 3401, 3742,
+			                4632 )
+						AND I.ITEM_ID NOT BETWEEN 1000 AND 2064
+						AND I.ITEM_ID NOT BETWEEN 7000 AND 8000
+	                    GROUP BY M.CHAMP_ID, I.ITEM_ID
+	                )
+	            ),
+	            PivotItems AS (
+	                SELECT
+	                    CHAMP_ID,
+	                    MAX(CASE WHEN RNK = 1 THEN ITEM_ID END) AS ITEM_1,
+	                    MAX(CASE WHEN RNK = 2 THEN ITEM_ID END) AS ITEM_2,
+	                    MAX(CASE WHEN RNK = 3 THEN ITEM_ID END) AS ITEM_3,
+	                    MAX(CASE WHEN RNK = 4 THEN ITEM_ID END) AS ITEM_4,
+	                    MAX(CASE WHEN RNK = 5 THEN ITEM_ID END) AS ITEM_5,
+	                    MAX(CASE WHEN RNK = 6 THEN ITEM_ID END) AS ITEM_6
+	                FROM RankedItems
+	                WHERE RNK <= 6
+	                GROUP BY CHAMP_ID
+	            ),
+	            Final AS (
+	                SELECT
+	                    CHAMP_ID,
+	                    ITEM_1,
+	                    NVL(NULLIF(ITEM_2, 0), ITEM_1) AS ITEM_2,
+	                    NVL(NULLIF(ITEM_3, 0), ITEM_1) AS ITEM_3,
+	                    NVL(NULLIF(ITEM_4, 0), ITEM_1) AS ITEM_4,
+	                    NVL(NULLIF(ITEM_5, 0), ITEM_1) AS ITEM_5,
+	                    NVL(NULLIF(ITEM_6, 0), ITEM_1) AS ITEM_6,
+	                    ITEM_1 AS MIX_1,
+	                    CASE
+	                        WHEN ITEM_4 IS NULL OR ITEM_4 = 0 OR ITEM_4 = ITEM_1 THEN NVL(NULLIF(ITEM_2, 0), ITEM_1)
+	                        ELSE ITEM_4
+	                    END AS MIX_2,
+	                    CASE
+	                        WHEN ITEM_2 IS NULL OR ITEM_2 = 0 OR ITEM_2 = ITEM_1
+	                          OR ITEM_2 = CASE
+	                                        WHEN ITEM_4 IS NULL OR ITEM_4 = 0 OR ITEM_4 = ITEM_1 THEN NVL(NULLIF(ITEM_2, 0), ITEM_1)
+	                                        ELSE ITEM_4
+	                                      END THEN NVL(NULLIF(ITEM_3, 0), ITEM_1)
+	                        ELSE ITEM_2
+	                    END AS MIX_3
+	                FROM PivotItems
+	            )
+	            SELECT 
+	                CHAMP_ID,
+	                ITEM_1,
+	                ITEM_2,
+	                ITEM_3,
+	                ITEM_4,
+	                ITEM_5,
+	                ITEM_6,
+	                MIX_1,
+	                MIX_2,
+	                MIX_3
+	            FROM Final
+	        ) src
+	        ON (target.CBI_CHAMP_ID = src.CHAMP_ID AND target.ITEM_C_OR_S = 1)
+	        WHEN MATCHED THEN
+	            UPDATE SET
+	                target.CBI_SUMMONER_PUUID = NULL,
+	                target.CBI_ITEM_1 = src.ITEM_1,
+	                target.CBI_ITEM_2 = src.ITEM_2,
+	                target.CBI_ITEM_3 = src.ITEM_3,
+	                target.CBI_ITEM2_1 = src.ITEM_4,
+	                target.CBI_ITEM2_2 = src.ITEM_5,
+	                target.CBI_ITEM2_3 = src.ITEM_6,
+	                target.CBI_ITEM3_1 = src.MIX_1,
+	                target.CBI_ITEM3_2 = src.MIX_2,
+	                target.CBI_ITEM3_3 = src.MIX_3
+	        WHEN NOT MATCHED THEN
+	            INSERT (
+	                CBI_CHAMP_ID, CBI_SUMMONER_PUUID, ITEM_C_OR_S,
+	                CBI_ITEM_1, CBI_ITEM_2, CBI_ITEM_3,
+	                CBI_ITEM2_1, CBI_ITEM2_2, CBI_ITEM2_3,
+	                CBI_ITEM3_1, CBI_ITEM3_2, CBI_ITEM3_3
+	            )
+	            VALUES (
+	                src.CHAMP_ID, NULL, 1,
+	                src.ITEM_1, src.ITEM_2, src.ITEM_3,
+	                src.ITEM_4, src.ITEM_5, src.ITEM_6,
+	                src.MIX_1, src.MIX_2, src.MIX_3
+	            )
+	    ]]>
+	</update>
+	<update id="mergeSummonerBuildItem">
+	    <![CDATA[
+	    MERGE INTO CHAMP_BUILD_ITEM target
+	    USING (
+	        WITH RankedItems AS (
+	            SELECT 
+	                M.CHAMP_ID,
+	                SI.SUMMONER_CHAMP_ID,
+	                I.ITEM_ID,
+	                COUNT(*) AS USE_COUNT,
+	                ROW_NUMBER() OVER (
+	                    PARTITION BY M.CHAMP_ID
+	                    ORDER BY COUNT(*) DESC
+	                ) AS RNK
+	            FROM (
+	                SELECT MATCH_ID, MI_SUMMONER_ID, MATCH_ITEM_1 AS ITEM_ID FROM MATCH_ITEMS UNION ALL
+	                SELECT MATCH_ID, MI_SUMMONER_ID, MATCH_ITEM_2 FROM MATCH_ITEMS UNION ALL
+	                SELECT MATCH_ID, MI_SUMMONER_ID, MATCH_ITEM_3 FROM MATCH_ITEMS UNION ALL
+	                SELECT MATCH_ID, MI_SUMMONER_ID, MATCH_ITEM_4 FROM MATCH_ITEMS UNION ALL
+	                SELECT MATCH_ID, MI_SUMMONER_ID, MATCH_ITEM_5 FROM MATCH_ITEMS UNION ALL
+	                SELECT MATCH_ID, MI_SUMMONER_ID, MATCH_ITEM_6 FROM MATCH_ITEMS UNION ALL
+	                SELECT MATCH_ID, MI_SUMMONER_ID, MATCH_ITEM_7 FROM MATCH_ITEMS
+	            ) I
+	            JOIN MATCH_DETAIL M ON M.MATCH_ID = I.MATCH_ID AND M.MD_SUMMONER_ID = I.MI_SUMMONER_ID
+	            JOIN SUMMONER_INFO SI ON SI.PUUID = #{puuid} 
+	            AND I.ITEM_ID NOT IN (
+	                1055, 1042, 1043, 1082, 1037, 1052, 1400,
+	                2003, 2055, 2138, 2139, 2140,
+	                2420, 2421, 2422, 2423, 2424, 2508, 
+	                3006, 3009, 3020, 3035, 3044, 3047, 3067, 3086, 3108, 3111, 3117, 3123, 3147, 3158, 3171, 3172, 3173, 3174, 3340, 3361, 3362, 3363, 3364, 3401, 3742,
+	                4632
+	            )
+	            AND I.ITEM_ID NOT BETWEEN 1000 AND 2064
+	            AND I.ITEM_ID NOT BETWEEN 7000 AND 8000
+	            AND M.MD_SUMMONER_ID = SI.SUMMONER_ID AND M.CHAMP_ID = SI.SUMMONER_CHAMP_ID
+	            WHERE I.ITEM_ID IS NOT NULL AND I.ITEM_ID != 0 AND M.MD_PUUID = #{puuid}
+	            GROUP BY M.CHAMP_ID, SI.SUMMONER_CHAMP_ID, I.ITEM_ID
+	        ),
+	        Final AS (
+	            SELECT
+	                SUMMONER_CHAMP_ID,
+	                MAX(CASE WHEN RNK = 1 THEN ITEM_ID END) AS ITEM_1,
+	                MAX(CASE WHEN RNK = 2 THEN ITEM_ID END) AS ITEM_2,
+	                MAX(CASE WHEN RNK = 3 THEN ITEM_ID END) AS ITEM_3,
+	                MAX(CASE WHEN RNK = 4 THEN ITEM_ID END) AS ITEM_4,
+	                MAX(CASE WHEN RNK = 5 THEN ITEM_ID END) AS ITEM_5,
+	                MAX(CASE WHEN RNK = 6 THEN ITEM_ID END) AS ITEM_6
+	            FROM RankedItems
+	            WHERE RNK <= 6
+	            GROUP BY SUMMONER_CHAMP_ID
+	        )
+	        SELECT
+	            SUMMONER_CHAMP_ID,
+	            NVL(NULLIF(ITEM_1, 0), 0) AS ITEM_1,
+	            NVL(NULLIF(ITEM_2, 0), NVL(NULLIF(ITEM_1, 0), 0)) AS ITEM_2,
+	            NVL(NULLIF(ITEM_3, 0), NVL(NULLIF(ITEM_1, 0), 0)) AS ITEM_3,
+	            NVL(NULLIF(ITEM_2, 0), NVL(NULLIF(ITEM_1, 0), 0)) AS ITEM4,
+	            NVL(NULLIF(ITEM_5, 0), NVL(NULLIF(ITEM_1, 0), 0)) AS ITEM5,
+	            NVL(NULLIF(ITEM_6, 0), NVL(NULLIF(ITEM_1, 0), 0)) AS ITEM6,
+	            NVL(NULLIF(ITEM_1, 0), 0) AS MIX_1,
+	            NVL(NULLIF(ITEM_3, 0), NVL(NULLIF(ITEM_1, 0), 0)) AS MIX_2,
+	            NVL(NULLIF(ITEM_4, 0), NVL(NULLIF(ITEM_1, 0), 0)) AS MIX_3
+	        FROM Final
+	    ) src
+	    ON (
+	        target.CBI_SUMMONER_PUUID = #{puuid}
+	    )
+	    WHEN MATCHED THEN
+	        UPDATE SET
+	        	target.CBI_CHAMP_ID = src.SUMMONER_CHAMP_ID,
+	            target.CBI_ITEM_1 = src.ITEM_1,
+	            target.CBI_ITEM_2 = src.ITEM_2,
+	            target.CBI_ITEM_3 = src.ITEM_3,
+	            target.CBI_ITEM2_1 = src.ITEM4,
+	            target.CBI_ITEM2_2 = src.ITEM5,
+	            target.CBI_ITEM2_3 = src.ITEM6,
+	            target.CBI_ITEM3_1 = src.MIX_1,
+	            target.CBI_ITEM3_2 = src.MIX_2,
+	            target.CBI_ITEM3_3 = src.MIX_3,
+	            target.ITEM_C_OR_S = 2
+	    WHEN NOT MATCHED THEN
+	        INSERT (
+	            CBI_CHAMP_ID, CBI_SUMMONER_PUUID, ITEM_C_OR_S,
+	            CBI_ITEM_1, CBI_ITEM_2, CBI_ITEM_3,
+	            CBI_ITEM2_1, CBI_ITEM2_2, CBI_ITEM2_3,
+	            CBI_ITEM3_1, CBI_ITEM3_2, CBI_ITEM3_3
+	        )
+	        VALUES (
+	            src.SUMMONER_CHAMP_ID, #{puuid}, 2,
+	            src.ITEM_1, src.ITEM_2, src.ITEM_3,
+	            src.ITEM4, src.ITEM5, src.ITEM6,
+	            src.MIX_1, src.MIX_2, src.MIX_3
+	        )
+	    ]]>
+    </update>
+	<update id="mergeChampionBuildRune">
+		<![CDATA[
+			MERGE INTO CHAMP_BUILD_RUNES target
+			USING (
+			    SELECT *
+			    FROM (
+			        SELECT 
+			            CHAMP_ID,
+			            MATCH_MAIN_RUNE_1,
+			            MATCH_MAIN_RUNE_2,
+			            MATCH_MAIN_RUNE_3,
+			            MATCH_MAIN_RUNE_4,
+			            MATCH_SUB_RUNE_1,
+			            MATCH_SUB_RUNE_2,
+			            ROW_NUMBER() OVER (PARTITION BY CHAMP_ID ORDER BY CNT DESC) AS RNK
+			        FROM (
+			            SELECT 
+			                D.CHAMP_ID,
+			                R.MATCH_MAIN_RUNE_1,
+			                R.MATCH_MAIN_RUNE_2,
+			                R.MATCH_MAIN_RUNE_3,
+			                R.MATCH_MAIN_RUNE_4,
+			                R.MATCH_SUB_RUNE_1,
+			                R.MATCH_SUB_RUNE_2,
+			                COUNT(*) AS CNT
+			            FROM MATCH_DETAIL D
+			            JOIN MATCH_RUNES R
+			                ON D.MATCH_ID = R.MATCH_ID
+			                AND D.MD_SUMMONER_ID = R.MR_SUMMONER_ID
+			            WHERE R.MATCH_MAIN_RUNE_1 IS NOT NULL
+			            GROUP BY 
+			                D.CHAMP_ID,
+			                R.MATCH_MAIN_RUNE_1,
+			                R.MATCH_MAIN_RUNE_2,
+			                R.MATCH_MAIN_RUNE_3,
+			                R.MATCH_MAIN_RUNE_4,
+			                R.MATCH_SUB_RUNE_1,
+			                R.MATCH_SUB_RUNE_2
+			        )
+			    ) WHERE RNK = 1
+			) src
+			ON (
+			    target.CBR_CHAMP_ID = src.CHAMP_ID
+			    AND target.CBR_SUMMONER_PUUID IS NULL
+			    AND target.RUNE_C_OR_S = 1
+			)
+			WHEN MATCHED THEN UPDATE SET
+			    target.CBR_CHAMP_MAIN_1 = src.MATCH_MAIN_RUNE_1,
+			    target.CBR_CHAMP_MAIN_2 = src.MATCH_MAIN_RUNE_2,
+			    target.CBR_CHAMP_MAIN_3 = src.MATCH_MAIN_RUNE_3,
+			    target.CBR_CHAMP_MAIN_4 = src.MATCH_MAIN_RUNE_4,
+			    target.CBR_CHAMP_SUB_1 = src.MATCH_SUB_RUNE_1,
+			    target.CBR_CHAMP_SUB_2 = src.MATCH_SUB_RUNE_2
+			WHEN NOT MATCHED THEN INSERT (
+			    CBR_CHAMP_ID,
+			    CBR_SUMMONER_PUUID,
+			    RUNE_C_OR_S,
+			    CBR_CHAMP_MAIN_1,
+			    CBR_CHAMP_MAIN_2,
+			    CBR_CHAMP_MAIN_3,
+			    CBR_CHAMP_MAIN_4,
+			    CBR_CHAMP_SUB_1,
+			    CBR_CHAMP_SUB_2
+			) VALUES (
+			    src.CHAMP_ID,
+			    NULL,
+			    1,
+			    src.MATCH_MAIN_RUNE_1,
+			    src.MATCH_MAIN_RUNE_2,
+			    src.MATCH_MAIN_RUNE_3,
+			    src.MATCH_MAIN_RUNE_4,
+			    src.MATCH_SUB_RUNE_1,
+			    src.MATCH_SUB_RUNE_2
+			)
+		    ]]>		
+	</update>
+	<update id="mergeSummonerBuildRune">
+	    <![CDATA[
+	        MERGE INTO CHAMP_BUILD_RUNES target
+	        USING (
+	            SELECT *
+	            FROM (
+	                SELECT 
+	                    D.CHAMP_ID,
+	                    SI.SUMMONER_CHAMP_ID,
+	                    R.MATCH_MAIN_RUNE_1,
+	                    R.MATCH_MAIN_RUNE_2,
+	                    R.MATCH_MAIN_RUNE_3,
+	                    R.MATCH_MAIN_RUNE_4,
+	                    R.MATCH_SUB_RUNE_1,
+	                    R.MATCH_SUB_RUNE_2,
+	                    COUNT(*) AS CNT
+	                FROM MATCH_DETAIL D
+	                JOIN MATCH_RUNES R
+	                    ON D.MATCH_ID = R.MATCH_ID
+	                    AND D.MD_SUMMONER_ID = R.MR_SUMMONER_ID
+	                JOIN SUMMONER_INFO SI
+	                    ON D.MD_PUUID = SI.PUUID
+	                    AND D.CHAMP_ID = SI.SUMMONER_CHAMP_ID
+	                WHERE D.MD_PUUID = #{puuid}
+	                    AND R.MATCH_MAIN_RUNE_1 IS NOT NULL
+	                GROUP BY 
+	                    D.CHAMP_ID,
+	                    SI.SUMMONER_CHAMP_ID,
+	                    R.MATCH_MAIN_RUNE_1,
+	                    R.MATCH_MAIN_RUNE_2,
+	                    R.MATCH_MAIN_RUNE_3,
+	                    R.MATCH_MAIN_RUNE_4,
+	                    R.MATCH_SUB_RUNE_1,
+	                    R.MATCH_SUB_RUNE_2
+	                ORDER BY COUNT(*) DESC
+	            )
+	            WHERE ROWNUM = 1
+	        ) src
+	        ON (
+	            target.CBR_SUMMONER_PUUID = #{puuid}
+	            AND target.RUNE_C_OR_S = 2
+	        )
+	        WHEN MATCHED THEN
+	            UPDATE SET
+	            	target.CBR_CHAMP_ID = src.SUMMONER_CHAMP_ID,
+	                target.CBR_CHAMP_MAIN_1 = src.MATCH_MAIN_RUNE_1,
+	                target.CBR_CHAMP_MAIN_2 = src.MATCH_MAIN_RUNE_2,
+	                target.CBR_CHAMP_MAIN_3 = src.MATCH_MAIN_RUNE_3,
+	                target.CBR_CHAMP_MAIN_4 = src.MATCH_MAIN_RUNE_4,
+	                target.CBR_CHAMP_SUB_1 = src.MATCH_SUB_RUNE_1,
+	                target.CBR_CHAMP_SUB_2 = src.MATCH_SUB_RUNE_2
+	        WHEN NOT MATCHED THEN
+	            INSERT (
+	                CBR_CHAMP_ID,
+	                CBR_SUMMONER_PUUID,
+	                RUNE_C_OR_S,
+	                CBR_CHAMP_MAIN_1,
+	                CBR_CHAMP_MAIN_2,
+	                CBR_CHAMP_MAIN_3,
+	                CBR_CHAMP_MAIN_4,
+	                CBR_CHAMP_SUB_1,
+	                CBR_CHAMP_SUB_2
+	            )
+	            VALUES (
+	                src.SUMMONER_CHAMP_ID,
+	                #{puuid},
+	                2,
+	                src.MATCH_MAIN_RUNE_1,
+	                src.MATCH_MAIN_RUNE_2,
+	                src.MATCH_MAIN_RUNE_3,
+	                src.MATCH_MAIN_RUNE_4,
+	                src.MATCH_SUB_RUNE_1,
+	                src.MATCH_SUB_RUNE_2
+	            )
+	    ]]>
+	</update>
+	<update id="mergeChampionBuildSkill">
+		<![CDATA[
+			MERGE INTO CHAMP_BUILD_SKILL target
+			USING (
+			    SELECT * FROM (
+			        SELECT
+			            md.champ_id,
+			            md.md_puuid,
+			            ms.match_skill_1, ms.match_skill_2, ms.match_skill_3, ms.match_skill_4,
+			            ms.match_skill_5, ms.match_skill_6, ms.match_skill_7, ms.match_skill_8,
+			            ms.match_skill_9, ms.match_skill_10, ms.match_skill_11, ms.match_skill_12,
+			            ms.match_skill_13, ms.match_skill_14, ms.match_skill_15, ms.match_skill_16,
+			            ms.match_skill_17, ms.match_skill_18,
+			            COUNT(*) AS cnt,
+			            ROW_NUMBER() OVER (PARTITION BY md.champ_id ORDER BY COUNT(*) DESC) AS rnk
+			        FROM MATCH_SKILLS ms
+			        JOIN MATCH_DETAIL md ON ms.match_id = md.match_id AND ms.ms_summoner_id = md.md_summoner_id
+			        WHERE ms.match_skill_1 IS NOT NULL -- 필터 조건 필요시 추가 가능
+			        GROUP BY
+			            md.champ_id,
+			            md.md_puuid,
+			            ms.match_skill_1, ms.match_skill_2, ms.match_skill_3, ms.match_skill_4,
+			            ms.match_skill_5, ms.match_skill_6, ms.match_skill_7, ms.match_skill_8,
+			            ms.match_skill_9, ms.match_skill_10, ms.match_skill_11, ms.match_skill_12,
+			            ms.match_skill_13, ms.match_skill_14, ms.match_skill_15, ms.match_skill_16,
+			            ms.match_skill_17, ms.match_skill_18
+			    )
+			    WHERE rnk = 1
+			) src
+			ON (
+			    target.CBS_CHAMPION_ID = src.champ_id
+			    AND target.CBS_SUMMONER_PUUID IS NULL
+			    AND target.SKILL_C_OR_S = 1
+			)
+			WHEN MATCHED THEN UPDATE SET
+			    target.LEVEL_1 = src.match_skill_1,
+			    target.LEVEL_2 = src.match_skill_2,
+			    target.LEVEL_3 = src.match_skill_3,
+			    target.LEVEL_4 = src.match_skill_4,
+			    target.LEVEL_5 = src.match_skill_5,
+			    target.LEVEL_6 = src.match_skill_6,
+			    target.LEVEL_7 = src.match_skill_7,
+			    target.LEVEL_8 = src.match_skill_8,
+			    target.LEVEL_9 = src.match_skill_9,
+			    target.LEVEL_10 = src.match_skill_10,
+			    target.LEVEL_11 = src.match_skill_11,
+			    target.LEVEL_12 = src.match_skill_12,
+			    target.LEVEL_13 = src.match_skill_13,
+			    target.LEVEL_14 = src.match_skill_14,
+			    target.LEVEL_15 = src.match_skill_15,
+			    target.LEVEL_16 = src.match_skill_16,
+			    target.LEVEL_17 = src.match_skill_17,
+			    target.LEVEL_18 = src.match_skill_18
+			WHEN NOT MATCHED THEN
+			INSERT (
+			    CBS_CHAMPION_ID,
+			    CBS_SUMMONER_PUUID,
+			    SKILL_C_OR_S,
+			    LEVEL_1, LEVEL_2, LEVEL_3, LEVEL_4, LEVEL_5, LEVEL_6, LEVEL_7, LEVEL_8,
+			    LEVEL_9, LEVEL_10, LEVEL_11, LEVEL_12, LEVEL_13, LEVEL_14, LEVEL_15,
+			    LEVEL_16, LEVEL_17, LEVEL_18
+			)
+			VALUES (
+			    src.champ_id,
+			    NULL,
+			    1,
+			    src.match_skill_1, src.match_skill_2, src.match_skill_3, src.match_skill_4, src.match_skill_5, src.match_skill_6, src.match_skill_7, src.match_skill_8,
+			    src.match_skill_9, src.match_skill_10, src.match_skill_11, src.match_skill_12, src.match_skill_13, src.match_skill_14, src.match_skill_15,
+			    src.match_skill_16, src.match_skill_17, src.match_skill_18
+			)
+		]]>
+	</update>
+	<update id="mergeSummonerBuildSkill">
+		<![CDATA[
+			MERGE INTO CHAMP_BUILD_SKILL target
+			USING (
+			    SELECT * FROM (
+			        SELECT
+			            D.MD_PUUID,
+			            D.CHAMP_ID,
+			            S.MATCH_SKILL_1, S.MATCH_SKILL_2, S.MATCH_SKILL_3, S.MATCH_SKILL_4,
+			            S.MATCH_SKILL_5, S.MATCH_SKILL_6, S.MATCH_SKILL_7, S.MATCH_SKILL_8,
+			            S.MATCH_SKILL_9, S.MATCH_SKILL_10, S.MATCH_SKILL_11, S.MATCH_SKILL_12,
+			            S.MATCH_SKILL_13, S.MATCH_SKILL_14, S.MATCH_SKILL_15, S.MATCH_SKILL_16,
+			            S.MATCH_SKILL_17, S.MATCH_SKILL_18,
+			            ROW_NUMBER() OVER (
+			                ORDER BY COUNT(*) DESC
+			            ) AS RNK
+			        FROM MATCH_DETAIL D
+			        JOIN MATCH_SKILLS S
+			            ON D.MATCH_ID = S.MATCH_ID
+			            AND D.MD_SUMMONER_ID = S.MS_SUMMONER_ID
+			        WHERE D.MD_PUUID = #{puuid}
+			        GROUP BY
+			            D.MD_PUUID,
+			            D.CHAMP_ID,
+			            S.MATCH_SKILL_1, S.MATCH_SKILL_2, S.MATCH_SKILL_3, S.MATCH_SKILL_4,
+			            S.MATCH_SKILL_5, S.MATCH_SKILL_6, S.MATCH_SKILL_7, S.MATCH_SKILL_8,
+			            S.MATCH_SKILL_9, S.MATCH_SKILL_10, S.MATCH_SKILL_11, S.MATCH_SKILL_12,
+			            S.MATCH_SKILL_13, S.MATCH_SKILL_14, S.MATCH_SKILL_15, S.MATCH_SKILL_16,
+			            S.MATCH_SKILL_17, S.MATCH_SKILL_18
+			    )
+			    WHERE RNK = 1
+			) src
+			ON (
+			    target.CBS_CHAMPION_ID = src.CHAMP_ID
+			    AND target.CBS_SUMMONER_PUUID = src.MD_PUUID
+			    AND target.SKILL_C_OR_S = 2
+			)
+			WHEN MATCHED THEN UPDATE SET
+			    target.LEVEL_1 = src.MATCH_SKILL_1,
+			    target.LEVEL_2 = src.MATCH_SKILL_2,
+			    target.LEVEL_3 = src.MATCH_SKILL_3,
+			    target.LEVEL_4 = src.MATCH_SKILL_4,
+			    target.LEVEL_5 = src.MATCH_SKILL_5,
+			    target.LEVEL_6 = src.MATCH_SKILL_6,
+			    target.LEVEL_7 = src.MATCH_SKILL_7,
+			    target.LEVEL_8 = src.MATCH_SKILL_8,
+			    target.LEVEL_9 = src.MATCH_SKILL_9,
+			    target.LEVEL_10 = src.MATCH_SKILL_10,
+			    target.LEVEL_11 = src.MATCH_SKILL_11,
+			    target.LEVEL_12 = src.MATCH_SKILL_12,
+			    target.LEVEL_13 = src.MATCH_SKILL_13,
+			    target.LEVEL_14 = src.MATCH_SKILL_14,
+			    target.LEVEL_15 = src.MATCH_SKILL_15,
+			    target.LEVEL_16 = src.MATCH_SKILL_16,
+			    target.LEVEL_17 = src.MATCH_SKILL_17,
+			    target.LEVEL_18 = src.MATCH_SKILL_18
+			WHEN NOT MATCHED THEN INSERT (
+			    CBS_CHAMPION_ID,
+			    CBS_SUMMONER_PUUID,
+			    SKILL_C_OR_S,
+			    LEVEL_1, LEVEL_2, LEVEL_3, LEVEL_4, LEVEL_5, LEVEL_6, LEVEL_7, LEVEL_8,
+			    LEVEL_9, LEVEL_10, LEVEL_11, LEVEL_12, LEVEL_13, LEVEL_14, LEVEL_15,
+			    LEVEL_16, LEVEL_17, LEVEL_18
+			) VALUES (
+			    src.CHAMP_ID,
+			    src.MD_PUUID,
+			    2,
+			    src.MATCH_SKILL_1, src.MATCH_SKILL_2, src.MATCH_SKILL_3, src.MATCH_SKILL_4,
+			    src.MATCH_SKILL_5, src.MATCH_SKILL_6, src.MATCH_SKILL_7, src.MATCH_SKILL_8,
+			    src.MATCH_SKILL_9, src.MATCH_SKILL_10, src.MATCH_SKILL_11, src.MATCH_SKILL_12,
+			    src.MATCH_SKILL_13, src.MATCH_SKILL_14, src.MATCH_SKILL_15, src.MATCH_SKILL_16,
+			    src.MATCH_SKILL_17, src.MATCH_SKILL_18
+			)
+		]]>
+	</update>
+	<update id="mergeChampionBuildSpell">
+		<![CDATA[
+			MERGE INTO CHAMP_BUILD_SPELL target
+			USING (
+			    SELECT *
+			    FROM (
+			        SELECT
+			            md.CHAMP_ID AS CB_SPELL_CHAMP_ID,
+			            NULL AS CB_SPELL_SUMMONER_PUUID,
+			            1 AS SPELL_C_OR_S,
+			            ms.MATCH_SPELL_1 AS CB_SPELL_1,
+			            ms.MATCH_SPELL_2 AS CB_SPELL_2,
+			            COUNT(*) AS CNT,
+			            ROW_NUMBER() OVER (PARTITION BY md.CHAMP_ID ORDER BY COUNT(*) DESC) AS RNK
+			        FROM MATCH_DETAIL md
+			        JOIN MATCH_SPELL ms
+			          ON md.MATCH_ID = ms.M_SPELL_MATCH_ID
+			         AND md.MD_SUMMONER_ID = ms.M_SPELL_SUMMONER_ID
+			        GROUP BY
+			            md.CHAMP_ID,
+			            ms.MATCH_SPELL_1,
+			            ms.MATCH_SPELL_2
+			    ) WHERE RNK = 1
+			) src
+			ON (
+			    target.CB_SPELL_CHAMP_ID = src.CB_SPELL_CHAMP_ID
+			    AND target.CB_SPELL_SUMMONER_PUUID IS NULL
+			    AND target.SPELL_C_OR_S = 1
+			)
+			WHEN MATCHED THEN
+			    UPDATE SET
+			        target.CB_SPELL_1 = src.CB_SPELL_1,
+			        target.CB_SPELL_2 = src.CB_SPELL_2
+			WHEN NOT MATCHED THEN
+			    INSERT (
+			        CB_SPELL_CHAMP_ID,
+			        CB_SPELL_SUMMONER_PUUID,
+			        SPELL_C_OR_S,
+			        CB_SPELL_1,
+			        CB_SPELL_2
+			    )
+			    VALUES (
+			        src.CB_SPELL_CHAMP_ID,
+			        NULL,
+			        1,
+			        src.CB_SPELL_1,
+			        src.CB_SPELL_2
+			    )
+			]]>
+	</update>
+	<update id="mergeSummonerBuildSpell">
+		<![CDATA[
+			MERGE INTO CHAMP_BUILD_SPELL target
+			USING (
+			    SELECT *
+			    FROM (
+			        SELECT
+			            md.CHAMP_ID AS CB_SPELL_CHAMP_ID,
+			            si.PUUID AS CB_SPELL_SUMMONER_PUUID,
+			            2 AS SPELL_C_OR_S,
+			            ms.MATCH_SPELL_1 AS CB_SPELL_1,
+			            ms.MATCH_SPELL_2 AS CB_SPELL_2,
+			            COUNT(*) AS CNT,
+			            ROW_NUMBER() OVER (PARTITION BY md.CHAMP_ID ORDER BY COUNT(*) DESC) AS RNK
+			        FROM SUMMONER_INFO si
+			        JOIN MATCH_DETAIL md ON si.PUUID = #{puuid} AND si.SUMMONER_CHAMP_ID = md.CHAMP_ID
+			        JOIN MATCH_SPELL ms ON md.MATCH_ID = ms.M_SPELL_MATCH_ID AND md.MD_SUMMONER_ID = ms.M_SPELL_SUMMONER_ID
+			        WHERE si.PUUID = #{puuid}
+			        GROUP BY
+			            md.CHAMP_ID,
+			            si.PUUID,
+			            ms.MATCH_SPELL_1,
+			            ms.MATCH_SPELL_2
+			    )
+			    WHERE RNK = 1
+			) src
+			ON (
+			   	target.CB_SPELL_SUMMONER_PUUID = src.CB_SPELL_SUMMONER_PUUID
+			    AND target.SPELL_C_OR_S = 2
+			)
+			WHEN MATCHED THEN
+			    UPDATE SET
+		    target.CB_SPELL_CHAMP_ID = src.CB_SPELL_CHAMP_ID,
+		    target.CB_SPELL_1 = src.CB_SPELL_1,
+		    target.CB_SPELL_2 = src.CB_SPELL_2
+			WHEN NOT MATCHED THEN
+			    INSERT (
+			        CB_SPELL_CHAMP_ID,
+			        CB_SPELL_SUMMONER_PUUID,
+			        SPELL_C_OR_S,
+			        CB_SPELL_1,
+			        CB_SPELL_2
+			    )
+			    VALUES (
+			        src.CB_SPELL_CHAMP_ID,
+			        src.CB_SPELL_SUMMONER_PUUID,
+			        2,
+			        src.CB_SPELL_1,
+			        src.CB_SPELL_2
+			    )
+		]]>
+	</update>
+	<update id="gptqudtls">
+		<![CDATA[
+			UPDATE CHAMP_BUILD_SKILL
+			SET CBS_CHAMPION_ID = (
+			    SELECT SUMMONER_CHAMP_ID 
+			    FROM SUMMONER_INFO 
+			    WHERE PUUID = #{puuid}
+			)
+			WHERE CBS_SUMMONER_PUUID = #{puuid}
+		]]>
+	</update>
+</mapper>

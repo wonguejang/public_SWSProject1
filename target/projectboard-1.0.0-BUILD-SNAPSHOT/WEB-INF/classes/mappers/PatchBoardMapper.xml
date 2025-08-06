@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- DAO 인터페이스와 연결될 네임스페이스 설정 -->
+<mapper namespace="com.sw.dao.PatchBoardDao">
+
+    <!-- 게시글 전체 조회 -->
+	<select id="getAllPosts" resultType="com.sw.dto.PatchBoardDto">
+	    <![CDATA[
+	   	 SELECT * FROM PATCH_BOARD ORDER BY P_BNO DESC
+	    ]]>
+	</select>
+
+
+
+    <!-- 게시글 하나 조회 -->
+    <select id="getPostById" parameterType="int" resultType="com.sw.dto.PatchBoardDto">
+	    <![CDATA[
+	        SELECT * FROM PATCH_BOARD WHERE P_BNO = #{bno}
+	    ]]>
+	</select>
+
+
+    <!-- 게시글 추가 -->
+	  <insert id="insertPost" parameterType="com.sw.dto.PatchBoardDto">
+	    <![CDATA[
+	        INSERT INTO PATCH_BOARD (
+	            P_BNO, P_TITLE, P_CONTENT, P_WRITER, P_DATE, P_CHECK, P_RATING, P_UNRATING
+	        ) VALUES (
+	            PATCH_BOARD_SEQ.NEXTVAL,
+	            #{pTitle},
+	            #{pContent},
+	            #{pWriter},
+	            SYSDATE, 0, 0, 0
+	        )
+	    ]]>
+	</insert>
+	
+	<!-- PATCH_BOARD 검색 쿼리 -->
+	<select id="searchPosts" resultType="com.sw.dto.PatchBoardDto">
+	    <![CDATA[
+	    SELECT * FROM PATCH_BOARD
+	    WHERE
+	    ]]>
+	    <choose>
+	        <!-- 제목만 검색 -->
+	        <when test="category eq 'title'">
+	            <![CDATA[
+	            P_TITLE LIKE '%' || #{keyword} || '%'
+	            ]]>
+	        </when>
+	
+	        <!-- 내용만 검색 -->
+	        <when test="category eq 'content'">
+	            <![CDATA[
+	            P_CONTENT LIKE '%' || #{keyword} || '%'
+	            ]]>
+	        </when>
+	
+	        <!-- 제목 + 내용 검색 -->
+	        <otherwise>
+	            <![CDATA[
+	            (P_TITLE LIKE '%' || #{keyword} || '%' OR P_CONTENT LIKE '%' || #{keyword} || '%')
+	            ]]>
+	        </otherwise>
+	    </choose>
+	    <![CDATA[
+	    ORDER BY P_BNO DESC
+	    ]]>
+	</select>
+
+
+
+    <!-- 게시글 수정 -->
+    <update id="updatePost" parameterType="com.sw.dto.PatchBoardDto">
+      	 <![CDATA[
+	        UPDATE PATCH_BOARD SET
+	            P_TITLE = #{p_title},
+	            P_CONTENT = #{p_content}
+	        WHERE P_BNO = #{p_bno}
+        ]]>
+    </update>
+
+    <!-- 게시글 삭제 -->
+    <delete id="deletePost" parameterType="int">
+        <![CDATA[
+        	DELETE FROM PATCH_BOARD WHERE P_BNO = #{bno}
+        ]]>
+    </delete>
+
+    <!-- 조회수 증가 -->
+    <update id="increaseViewCount">
+	     <![CDATA[
+		    UPDATE PATCH_BOARD
+		    SET P_CHECK = P_CHECK + 1
+		    WHERE P_BNO = #{p_bno}
+	     ]]>
+	</update>
+    
+    <select id="getDetail" parameterType="int" resultType="com.sw.dto.PatchBoardDto">
+   		<![CDATA[
+   			 SELECT * FROM PATCH_BOARD WHERE P_BNO = #{bno}
+   		 ]]>
+	</select>
+
+    <!-- 추천수 -->
+   <update id="increaseLike" parameterType="int">
+	    <![CDATA[
+	        UPDATE PATCH_BOARD
+	        SET P_RATING = NVL(P_RATING, 0) + 1 -- NULL이면 0으로 간주
+	        WHERE P_BNO = #{p_bno}
+	    ]]>
+	</update>
+	<!--비추천 -->
+	<update id="increaseUnLike" parameterType="int">
+	    <![CDATA[
+	        UPDATE PATCH_BOARD
+	        SET P_UNRATING = NVL(P_UNRATING, 0) + 1
+	        WHERE P_BNO = #{p_bno}
+	    ]]>
+	</update>
+
+	
+   
+
+</mapper>

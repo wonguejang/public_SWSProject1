@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper       
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wg.dao.MemberDao">
+	<insert id="insert" parameterType="com.wg.dto.Member.MemberDto">
+		<![CDATA[
+			INSERT INTO users (user_id, user_pw, user_name, pw_hint, grade)
+			VALUES (#{userId}, #{userPw}, #{userName}, #{pwHint,jdbcType=VARCHAR}, #{grade})
+		]]>
+	</insert>
+	<select id="findById" parameterType="String" resultType="com.wg.dto.Member.MemberDto">
+   		<![CDATA[
+   			SELECT * FROM users WHERE user_id = #{id}
+   		]]>
+   </select>
+	
+	<select id="login" resultType="com.wg.dto.Member.MemberDto">
+		<![CDATA[
+			SELECT * FROM users WHERE user_id = #{id} AND user_pw = #{pw}
+		]]>
+	</select>
+	
+	<!-- 1. 이메일 존재 여부 확인 -->
+    <select id="countByEmail" resultType="int">
+        <![CDATA[
+        	SELECT COUNT(*) FROM users WHERE user_id = #{email}
+        ]]>
+    </select>
+
+    <!-- 2. 토큰 저장 (이미 있으면 UPDATE, 없으면 INSERT 하게 구현하거나, 임시 테이블 이용 가능) -->
+    <insert id="insertResetToken">
+       <![CDATA[
+	        INSERT INTO reset_token(email, token, created_at)
+	        VALUES (#{email}, #{token}, SYSDATE)
+        ]]>
+    </insert>
+
+    <!-- 3. 토큰으로 이메일 찾기 -->
+    <select id="findEmailByToken" resultType="string">
+        <![CDATA[
+        	SELECT email FROM reset_token WHERE token = #{token}
+        ]]>
+    </select>
+
+    <!-- 4. 토큰 무효화 (삭제) -->
+    <delete id="deleteToken">
+        <![CDATA[
+       	    DELETE FROM reset_token WHERE token = #{token}
+        ]]>
+    </delete>
+    <update id="updatePassword" parameterType="map">
+	    <![CDATA[
+		    UPDATE users
+		    SET user_pw = #{userPw}
+		    WHERE user_id = #{userId}
+	    ]]>
+	</update>
+    
+    <update id="updateUserName" parameterType="com.wg.dto.Member.MemberDto">
+	    <![CDATA[
+		    UPDATE users
+		    SET user_name = #{userName}
+		    WHERE user_id = #{userId}
+	    ]]>
+   </update>
+   <select id="getGradeById" parameterType="String" resultType="int">
+	  <![CDATA[
+	    SELECT grade FROM USERS WHERE user_id = #{userId}
+     ]]>
+  </select>
+  
+  	<select id="selectUserName" parameterType="String" resultType="String">
+   	<![CDATA[
+    	SELECT user_name FROM users WHERE user_id = #{userId}
+	]]>
+	</select>
+  
+   
+    
+</mapper>

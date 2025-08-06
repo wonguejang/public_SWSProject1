@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="BoardMapper">
+	<!-- 게시글 번호로 게시글 목록 가져오기 rnum1 시작, rnum2 끝-->
+	<select id = "selectBoardList" resultType = "com.wg.dto.Board.FreeBoardDto">
+		<![CDATA[
+			SELECT b2.* 
+			FROM 
+				(
+				SELECT rownum rnum, b1.* 
+				FROM (SELECT * FROM free_board ORDER BY f_bno DESC) b1 
+				) b2 
+			WHERE rnum>=#{rnum1} AND rnum<=#{rnum2}
+		]]>
+	</select>
+	
+	<!-- 게시글 번호 갯수로 마지막 페이지 구하기 여기서 나온 숫자로 페이징 -->
+	<select id = "getLastPageNum" resultType = "java.lang.Integer">
+		<![CDATA[
+			SELECT COUNT(*) FROM free_board
+		]]>
+	</select>
+	
+	<!-- 게시글 번호로 게시글의 전체 내용 받아오기 -->
+	<select id = "getListBoardByBno" resultType = "com.wg.dto.Board.FreeBoardDto">
+		<![CDATA[
+			SELECT * 
+			FROM free_board 
+			WHERE f_bno = #{rnum}
+		]]>
+	</select>
+	
+	<!-- 게시글 번호로 게시글을 장성한 작성자 가져오기 -->
+	<select id = "getWriterByBno" resultType = "java.lang.String">
+		<![CDATA[
+			SELECT f_writer
+			FROM free_board
+			WHERE f_bno = #{bno}		
+		]]>	
+	</select>
+	
+	<!-- 게시글 작성 작성과 동시에 게시글 번호 가져오기(before)실행이라 +1해야 방금 작성된 작성글번호가 나옴 -->
+	<insert id = "insertBoardWrite" parameterType = "com.wg.dto.Board.FreeBoardDto">
+		<!-- 작성전 게시글 번호 -> +1 하면 현재 작성한 게시글 번호로 사용가능 -->
+		<selectKey keyProperty = "fBno" order = "BEFORE" resultType = "int">
+			<![CDATA[
+				SELECT MAX(f_bno) FROM free_board		
+			]]>
+		</selectKey>
+			<!-- 게시글 작성 -->
+			<![CDATA[
+				INSERT INTO free_board(f_bno, f_title, f_content, f_writer, f_date)
+				VALUES (SEQ_F_BOARD.nextval, #{fTitle}, #{fContent}, #{fWriter},sysdate)
+			]]>
+	</insert>
+	
+	<!-- 게시글 작성인데 게시글의 내용이 너무 길면 (코드상에서 문자열 자르기로)update로 문자열 더하기 해줌 -->
+	<update id = "toLongContent">
+		<![CDATA[
+			UPDATE free_board
+			SET f_content = f_content|| #{content}
+			WHERE f_bno = #{bno}
+		]]>
+	</update>
+
+	<!-- 게시글 수정은 content만 바뀐다고 생각하면 됨 나머지는 변경 불가 -->
+	<update id = "updateContentByBno">
+		<![CDATA[
+			UPDATE FREE_BOARD
+			SET F_TITLE = #{title}, 
+			    F_CONTENT = #{content}
+			WHERE F_BNO = #{bno}
+		]]>
+	</update>
+	
+	<!-- 게시글 삭제하기 - 작성자와 bno 받아와서 id 확인하고 삭제 요청보낼 꺼라 id가져오는 select문  -->
+	<select id = "selectUserIdByBnoWriter" resultType = "java.lang.String">
+		<![CDATA[
+			SELECT us.user_id
+			FROM free_board fd, users us
+			WHERE user_name = #{writer} AND fd.f_bno = #{bno}		
+		]]>
+	</select>
+	
+	<!-- 게시글 삭제하기 작성자가 #{writer}이고 게시글 번호가 #{bno}인 글 삭제 -->
+	<delete id = "deleteBoardContentByWriterId">
+		<![CDATA[
+			DELETE free_board
+			WHERE f_writer = #{writer} AND f_bno = #{bno}
+		]]>
+	</delete>	
+	
+	<!-- 게시글 작성 하단에 나올 챔피언 -->  <!-- BoardMapper.getBoardWriteChamps -->
+	<select id = "getBoardWriteChamps" resultType = "com.wg.dto.Board.FreeBoardWriteChampDto">
+		<![CDATA[
+			SELECT * 
+			FROM champions
+			ORDER BY champ_name ASC
+		]]>
+	</select>
+	
+	<!-- 게시글 작성 하단에 나올 아이템 --> <!-- BoardMapper.getBoardWriteItems -->
+	<select id = "getBoardWriteItems" resultType = "com.wg.dto.Board.FreeBoardWriteItemDto">
+		<![CDATA[
+			SELECT b1.*, rownum rnum
+			FROM (SELECT * FROM items) b1
+			ORDER BY rnum  ASC
+		]]>
+	</select>
+	
+	<!-- 게시글 작성 하단에 나올 룬 -->  <!-- BoardMapper.getBoardWriteRunes -->
+	<select id = "getBoardWriteRunes" resultType = "com.wg.dto.Board.FreeBoardWriteRuneDto">
+		<![CDATA[
+			SELECT b1.*, rownum rnum
+			FROM (SELECT rune_id, rune_name, rune_url, rune_content, rune_type FROM runes ) b1
+		]]>
+	</select>
+	
+	<!-- 게시글 작성 하단에 나올 스펠 -->  <!-- BoardMapper.getBoardWriteSpells -->
+	<select id = "getBoardWriteSpells" resultType = "com.wg.dto.Board.FreeBoardWriteSpellDto">
+		<![CDATA[
+			SELECT b1.*, rownum rnum
+			FROM (SELECT * FROM spells) b1
+			ORDER BY rnum ASC
+		]]>
+	</select>
+	
+	<!-- 게시글 조회시 조회수 증가 실행될때 마다 현자 숫자에 +1을 update -->
+	<update id = "updateCheck">
+		<![CDATA[
+			UPDATE free_board
+			SET f_check = f_check + 1
+			WHERE f_bno = #{f_bno}
+		]]>
+	</update>
+	
+	<!-- 게시글 추천 실행될때 마다 현자 숫자에 +1을 update -->
+	<update id = "updateLike">
+		<![CDATA[
+			UPDATE free_board
+			SET f_like = f_like+1
+			WHERE f_bno = #{f_bno}		
+		]]>
+	</update>
+	
+	<!-- 게시글 번호로 추천수 가쟈오기 -->
+	<select id = "selectFreeBoardF_like" resultType = "java.lang.Integer">
+		<![CDATA[
+			SELECT f_like
+			FROM free_board
+			WHERE f_bno = #{bno}
+		]]>
+	</select>
+	
+	<!-- 게시글 비추천 실행될때 마다 현자 숫자에 +1을 update -->
+	<update id = "updateDeLiket">
+		<![CDATA[
+			UPDATE free_board
+			SET f_delike = f_delike+1
+			WHERE f_bno = #{f_bno}		
+		]]>
+	</update>
+	
+	<!-- 게시글 번호로 비추천수 가져오기 -->
+	<select id = "selectFreeBoardF_delike" resultType = "java.lang.Integer">
+		<![CDATA[
+			SELECT f_delike
+			FROM free_board
+			WHERE f_bno = #{bno}
+		]]>
+	</select>
+	
+	<!-- 해당 게시글에 댓글 달기 -->
+	<insert id = "freeBoardReplyBoardOfBno">
+		<![CDATA[
+			INSERT INTO reply_board(rno, r_writer,r_writedate, r_content, r_f_board_bno)
+			VALUES(SEQ_R_BOARD.nextval, #{writer}, sysdate, #{content}, #{bno})
+		]]>
+	</insert>
+	
+	<!-- 댓글 번호와 아이디로 가져온 작성자를 사용해 댓글 삭제하기 -->
+	<delete id = "replyBoardDeleteFromWriter">
+		<![CDATA[
+			DELETE FROM reply_board
+			WHERE rno = #{rno} AND r_writer = #{rWriter}
+		]]>
+	</delete>
+	
+	<!-- 해당 게시글 번호의 모든 댓글 불러오기 -->
+	<select id = "relpyConentByFreeBoardBno" resultType = "com.wg.dto.Board.ReplyBoardDto">
+		<![CDATA[
+			SELECT *
+			FROM reply_board
+			WHERE r_f_board_bno = #{bno}
+			ORDER BY rno DESC
+		]]>
+	</select>
+
+	<!-- 게시글 검색 -->
+	<!-- 제목으로 검색 -->
+	<select id = "selectBoardByTitle" resultType = "com.wg.dto.Board.FreeBoardDto">
+		<![CDATA[
+			SELECT *
+			FROM free_board
+			WHERE f_title LIKE '%'||#{search}||'%'
+		]]>	
+	</select>
+	<!-- 내용으로 검색 -->
+	<select id = "selectBoardByContent" resultType = "com.wg.dto.Board.FreeBoardDto">
+		<![CDATA[
+			SELECT *
+			FROM free_board
+			WHERE f_content LIKE '%'||#{search}||'%'
+		]]>
+	</select>
+	<!-- 내용 + 제목 으로 검색 -->	
+	<select id = "selectBoardByContentOrTitle" resultType = "com.wg.dto.Board.FreeBoardDto">
+		<![CDATA[
+			SELECT *
+			FROM free_board
+			WHERE f_content LIKE '%'||#{search}||'%' OR f_title LIKE '%'||#{search}||'%'
+		]]>
+	</select>
+</mapper>

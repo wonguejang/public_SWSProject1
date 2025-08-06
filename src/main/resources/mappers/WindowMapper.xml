@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">  <!-- 모든 sql문을 <![CDATA[ (sql자리) ]]> 로 감싸자 -->
+<mapper namespace="WindowMapper"> 
+	<select id="ChampId" resultType="java.lang.String">
+		<![CDATA[
+			SELECT SUMMONER_CHAMP_ID FROM SUMMONER_INFO WHERE PUUID = #{puuid}
+		]]>
+	</select>
+	<select id="ChampImage" resultType="java.lang.String">
+		<![CDATA[
+			SELECT ICON_URL FROM ICONS WHERE ICON_ID = #{iconId}
+		]]>
+	</select>
+	<select id="Info" resultType="com.hc.dto.SummonerInfoDto">
+		<![CDATA[
+			SELECT * FROM SUMMONER_INFO WHERE PUUID = #{puuid}
+		]]>
+	</select>
+	<select id="ItemBuild" resultType="com.hc.dto.BuildItemDto">
+	    <![CDATA[
+	        SELECT * FROM CHAMP_BUILD_ITEM
+	        WHERE CBI_SUMMONER_PUUID = #{puuid}
+	        AND ITEM_C_OR_S = 2
+	    ]]>
+	</select>
+	
+	<select id="RuneBuild" resultType="com.hc.dto.BuildRuneDto">
+		<![CDATA[
+			SELECT * FROM CHAMP_BUILD_RUNES WHERE CBR_SUMMONER_PUUID = #{puuid}
+		]]>
+	</select>
+	
+	<select id="ChampionRuneBuild" resultType="com.hc.dto.BuildRuneDto">
+		<![CDATA[
+			SELECT * FROM CHAMP_BUILD_RUNES WHERE CBR_CHAMP_ID = #{ChampionId}
+		]]>
+	</select>
+	
+	<select id="SkillBuild" resultType="com.hc.dto.BuildSkillDto">
+	    <![CDATA[
+	        SELECT *
+	        FROM (
+	            SELECT * FROM CHAMP_BUILD_SKILL 
+	            WHERE CBS_SUMMONER_PUUID = #{puuid}
+	        )
+	        WHERE ROWNUM = 1
+	    ]]>
+	</select>
+	<select id="SpellBuild" resultType="com.hc.dto.BuildSpellDto">
+		<![CDATA[
+			SELECT * FROM CHAMP_BUILD_SPELL WHERE CB_SPELL_SUMMONER_PUUID = #{puuid}
+		]]>
+	</select>
+	<select id="icon" resultType="java.lang.String">
+		<![CDATA[
+			SELECT ICON_URL FROM ICONS WHERE ICON_ID = #{icon}
+		]]>
+	</select>
+	<select id="championImage" resultType="java.lang.String">
+		<![CDATA[
+			SELECT CHAMP_URL FROM CHAMPIONS WHERE CHAMP_ID = #{chapionId}
+		]]>
+	</select>
+	<select id="getRuneBackGround" resultType="java.lang.Integer">
+		<![CDATA[
+			SELECT RUNE_TYPE FROM RUNES WHERE RUNE_ID = #{rune}			
+		]]>
+	</select>
+	<select id="selectRuneUrl" resultType="java.lang.String">
+		<![CDATA[
+			SELECT RUNE_URL FROM RUNES WHERE RUNE_ID = #{Rune}
+		]]>
+	</select>
+	
+	<select id="selectChampKoreaName" resultType="java.lang.String">
+		<![CDATA[
+			SELECT CHAMP_NAME FROM CHAMPIONS WHERE CHAMP_ID = #{id}
+		]]>
+	</select>
+	
+	<select id="getChampionId" resultType="java.lang.String">
+		<![CDATA[
+			SELECT CHAMP_ID FROM CHAMPIONS WHERE CHAMP_NAME = #{ChampionName}
+		]]>
+	</select>
+	
+	<select id="shard" resultType="java.lang.String">
+		<![CDATA[
+			SELECT SHARD_URL FROM SHARD WHERE SHARD_ID = #{id}
+		]]>
+	</select>
+	<select id="selectItemImage" resultType="java.lang.String">
+		<![CDATA[
+			SELECT ITEM_URL FROM ITEMS WHERE ITEM_ID = #{id}
+		]]>
+	</select>
+	<select id="getSummonerItemPickRate" resultType="com.hc.dto.WinRateAndPickRateDto">
+		<![CDATA[
+			SELECT
+		    ROUND(
+		        COUNT(DISTINCT CASE WHEN #{itemId} IN (
+		            MI.MATCH_ITEM_1, MI.MATCH_ITEM_2, MI.MATCH_ITEM_3,
+		            MI.MATCH_ITEM_4, MI.MATCH_ITEM_5, MI.MATCH_ITEM_6, MI.MATCH_ITEM_7
+		        ) THEN MI.MATCH_ID END) * 100.0
+		        / COUNT(DISTINCT MD.MATCH_ID),
+		        2
+		    ) AS pikRate,
+		    ROUND(
+		        COUNT(DISTINCT CASE WHEN #{itemId} IN (
+		            MI.MATCH_ITEM_1, MI.MATCH_ITEM_2, MI.MATCH_ITEM_3,
+		            MI.MATCH_ITEM_4, MI.MATCH_ITEM_5, MI.MATCH_ITEM_6, MI.MATCH_ITEM_7
+		        ) AND M.WINNER_TEAM = MD.TEAM_ID THEN MI.MATCH_ID END) * 100.0
+		        / NULLIF(COUNT(DISTINCT MD.MATCH_ID), 0),
+		        2
+		    ) AS winRate
+			FROM MATCH_DETAIL MD
+			JOIN MATCH_ITEMS MI ON MD.MATCH_ID = MI.MATCH_ID AND MD.MD_SUMMONER_ID = MI.MI_SUMMONER_ID
+			JOIN MATCHS M ON MD.MATCH_ID = M.MATCH_ID
+			WHERE MD.MD_PUUID = #{puuid}
+			AND MD.CHAMP_ID = #{championId}
+		]]>
+	</select>
+	<select id="selectDetail" resultType="com.hc.dto.matchDetailDtoFolder.selectDetailDto">
+		<![CDATA[
+			SELECT * FROM MATCH_DETAIL WHERE MATCH_ID = #{MatchId}
+		]]>
+	</select>
+	<select id="MatchData" resultType="com.hc.dto.matchDetailDtoFolder.matchsDto">
+		<![CDATA[
+			SELECT * FROM MATCHS WHERE MATCH_ID = #{MatchId} 
+		]]>
+	</select>
+	<select id="MatchItem" resultType="com.hc.dto.MatchItemsDto">
+		<![CDATA[
+			SELECT * FROM MATCH_ITEMS WHERE MATCH_ID = #{MatchId} AND MI_SUMMONER_ID = #{mdSummonerId} AND ROWNUM = 1
+		]]>
+	</select>
+	<select id="buildPostTotalCount" resultType="java.lang.Integer">
+		<![CDATA[
+			SELECT COUNT(*) FROM BUILD_BOARD
+		]]>
+	</select>
+	<select id="buildPostList" resultType="com.hc.BuildBoardDto.getBuildPostDto">
+		<![CDATA[
+			SELECT b2.* 
+				FROM 
+					(
+					SELECT rownum rnum, b1.* 
+					FROM (SELECT * FROM BUILD_BOARD ORDER BY B_BNO DESC) b1 
+					) b2 
+				WHERE rnum >= #{start} AND rnum <= #{end}
+		]]>
+	</select>
+	<select id="buildPostListAndSerch" resultType="com.hc.BuildBoardDto.getBuildPostDto">
+		<![CDATA[
+			SELECT b2.* 
+				FROM 
+					(
+					SELECT rownum rnum, b1.* 
+					FROM (SELECT * FROM BUILD_BOARD WHERE B_TITLE LIKE '%' || #{boardCheckSerch} || '%' ORDER BY B_BNO DESC) b1 
+					) b2 
+				WHERE rnum >= #{start} AND rnum <= #{end}
+		]]>
+	</select>
+	<select id="getBoardByBno" resultType="com.hc.BuildBoardDto.getBuildPostDto">
+		<![CDATA[
+			SELECT * FROM BUILD_BOARD WHERE B_BNO=#{bno}
+		]]>
+	</select>
+	<select id="loginCheck" resultType="java.lang.Integer">
+		<![CDATA[
+			SELECT COUNT(*) FROM USERS WHERE USER_ID = #{inputId}
+		]]>
+	</select>
+	<select id="getSelectIdBuildPostList" resultType="com.hc.BuildBoardDto.getBuildPostDto">
+		<![CDATA[
+			SELECT b2.* 
+			FROM 
+				(
+				SELECT rownum rnum, b1.* 
+				FROM (SELECT * FROM BUILD_BOARD WHERE B_CHAMP = #{selectId} ORDER BY B_BNO DESC) b1 
+				) b2 
+			WHERE rnum >= #{start} AND rnum <= #{end}
+		]]>
+	</select>
+	<select id="getSelectIdBuildPostListAndSerch" resultType="com.hc.BuildBoardDto.getBuildPostDto">
+		<![CDATA[
+			SELECT b2.* 
+			FROM 
+				(
+				SELECT rownum rnum, b1.* 
+				FROM (SELECT * FROM BUILD_BOARD WHERE B_CHAMP = #{selectId} AND B_TITLE LIKE '%' || #{boardCheckSerch} || '%' ORDER BY B_BNO DESC) b1 
+				) b2 
+			WHERE rnum >= #{start} AND rnum <= #{end}
+		]]>
+	</select>
+	<select id="getSelectBox" resultType="com.hc.BuildBoardDto.selectBoxDto">
+		<![CDATA[
+			SELECT rownum rnum, b1.* FROM (SELECT CHAMP_ID, CHAMP_NAME, CHAMP_URL FROM CHAMPIONS ORDER BY CHAMP_NAME ASC) b1
+		]]>
+	</select>
+	<!-- 여기 수정 -->
+	<select id="getMainChampLastMatchId" resultType="java.lang.String">
+       <![CDATA[
+           SELECT MATCH_ID
+           FROM (
+               SELECT MATCH_ID
+               FROM MATCH_DETAIL
+               WHERE MD_PUUID = #{puuid} AND CHAMP_ID = #{champId}
+               ORDER BY MATCH_ID DESC
+           )
+           WHERE ROWNUM = 1
+       ]]>
+   </select>
+   <select id="getMainCampId" resultType="java.lang.Integer">
+      <![CDATA[
+         SELECT SUMMONER_CHAMP_ID FROM SUMMONER_INFO WHERE PUUID = #{puuid}
+      ]]>
+   </select>
+   <select id="getSummonerId" resultType="java.lang.String">
+      <![CDATA[
+         SELECT SUMMONER_ID FROM SUMMONER_INFO WHERE PUUID = #{puuid}
+      ]]>
+   </select>
+   <select id="getLastMatchShard"  resultType="com.hc.dto.MatchShardsDto">
+      <![CDATA[
+         SELECT * FROM MATCH_SHARD WHERE MATCH_ID = #{matchId} AND SUMMONER_ID = #{summoerId}
+      ]]>
+   </select>
+   <select id="searchSummoner" resultType="java.lang.String">
+		<![CDATA[
+			SELECT SUMMONER_ID 
+			FROM (SELECT SUMMONER_ID FROM SUMMONER_INFO WHERE SUMMONER_ID LIKE '%' || #{id} || '%' ORDER BY SUMMONER_ID) 
+			WHERE ROWNUM = 1
+		]]>
+   </select>
+   <select id="checkSummoner" resultType="java.lang.Integer">
+		<![CDATA[
+			SELECT COUNT(*) FROM SUMMONER_INFO WHERE SUMMONER_ID = #{id}
+		]]>
+   </select>
+   <select id="checkChampion" resultType="java.lang.Integer">
+		<![CDATA[
+			SELECT COUNT(*) FROM CHAMPIONS WHERE CHAMP_NAME = #{champName}
+		]]>
+   </select>
+   
+</mapper>

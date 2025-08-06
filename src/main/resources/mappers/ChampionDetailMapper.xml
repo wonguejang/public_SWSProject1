@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ChampionDetail">
+	<!-- match_id 가져오기 -->
+	<select id = "selectGetMatchId" resultType = "com.wg.dto.RiotDto.MatchsDto">
+		<![CDATA[
+			SELECT match_id
+			FROM matchs
+		]]>
+	</select>
+	
+	<select id = "selectCheckChampName" resultType = "java.lang.Integer">
+		<![CDATA[
+			SELECT COUNT(*)
+			FROM champions
+			WHERE champ_name = #{champName}
+		]]>
+	</select>
+	
+	<!-- 1코어 아이템 3개 가져오기 챔피언 이름으로 -->
+	<select id = "selectItemByChampFrom1Core" resultType = "com.wg.dto.RiotDto.MatchItemsDto">
+		<![CDATA[
+			SELECT *
+			FROM (
+			    SELECT 
+			        md.player_champ AS champName,
+			        it.item_url AS matchItem
+			    FROM match_items mi
+			    JOIN match_detail md 
+			        ON mi.match_id = md.match_id 
+			        AND mi.mi_summoner_id = md.md_summoner_id
+			    LEFT JOIN items it 
+			        ON mi.match_item_1 = it.item_id
+			    WHERE md.player_champ = #{champName}
+			    GROUP BY md.player_champ, it.item_url
+			    ORDER BY COUNT(*) DESC
+			)
+			WHERE ROWNUM <= 3
+		]]>
+	</select>
+	
+	<!-- 2코어 아이템 3개 가져오기 챔피언 이름으로 -->
+	<select id = "selectItemByChampFrom2Core" resultType = "com.wg.dto.RiotDto.MatchItemsDto">
+		<![CDATA[
+			SELECT *
+			FROM (
+			    SELECT 
+			        md.player_champ AS champName,
+			        it.item_url AS matchItem
+			    FROM match_items mi
+			    JOIN match_detail md 
+			        ON mi.match_id = md.match_id 
+			        AND mi.mi_summoner_id = md.md_summoner_id
+			    LEFT JOIN items it 
+			        ON mi.match_item_2 = it.item_id
+			    WHERE md.player_champ = #{champName}
+			    GROUP BY md.player_champ, it.item_url
+			    ORDER BY COUNT(*) DESC
+			)
+			WHERE ROWNUM <= 3
+		]]>
+	</select>
+	
+	<!-- 3코어 아이템 3개 가져오기 챔피언 이름으로 -->
+	<select id = "selectItemByChampFrom3Core" resultType = "com.wg.dto.RiotDto.MatchItemsDto">
+		<![CDATA[
+			SELECT *
+			FROM (
+			    SELECT 
+			        md.player_champ AS champName,
+			        it.item_url AS matchItem
+			    FROM match_items mi
+			    JOIN match_detail md 
+			        ON mi.match_id = md.match_id 
+			        AND mi.mi_summoner_id = md.md_summoner_id
+			    LEFT JOIN items it 
+			        ON mi.match_item_3 = it.item_id
+			    WHERE md.player_champ = #{champName}
+			    GROUP BY md.player_champ, it.item_url
+			    ORDER BY COUNT(*) DESC
+			)
+			WHERE ROWNUM <= 3
+		]]>
+	</select>
+	
+	<!-- 챔피언 이름으로 해당 챔피언 스킬 트리 가져오기 -->
+	<select id = "selectSkillTreeByChamp" resultType = "com.wg.dto.RiotDto.MatchSkillsDto">
+		<![CDATA[
+			SELECT *
+			FROM(
+			SELECT player_champ, match_skill_1, match_skill_2, match_skill_3, match_skill_4, match_skill_5
+			, match_skill_6, match_skill_7, match_skill_8, match_skill_9, match_skill_10, match_skill_11, match_skill_12
+			, match_skill_13, match_skill_14, match_skill_15, match_skill_16, match_skill_17, match_skill_18
+			FROM match_skills ms
+			INNER JOIN match_detail md
+			ON ms.match_id = md.match_id AND ms.ms_summoner_id = md.md_summoner_id
+			WHERE player_champ = #{champName}
+			)WHERE ROWNUM = 1		
+		]]>
+	</select>
+	
+	<!-- 챔피언 이름으로 해당 챔피언 룬 트리 가져오기 -->
+	<select id = "selectRuneTreeByChamp" resultType = "com.wg.dto.RiotDto.MatchRunesDto">
+		<![CDATA[
+			SELECT md.player_champ, r1.rune_url AS mainRune1Url, r2.rune_url AS mainRune2Url, r3.rune_url AS mainRune3Url, r4.rune_url AS subRune1Url, r5.rune_url AS subRune2Url, r6.rune_url AS subRune3Url
+			FROM match_runes mr
+			JOIN match_detail md 
+			ON mr.match_id = md.match_id AND mr.mr_summoner_id = md.md_summoner_id
+			LEFT JOIN runes r1 
+			ON r1.rune_id = mr.match_main_rune_1
+			LEFT JOIN runes r2 
+			ON r2.rune_id = mr.match_main_rune_2
+			LEFT JOIN runes r3 
+			ON r3.rune_id = mr.match_main_rune_3
+			LEFT JOIN runes r4 
+			ON r4.rune_id = mr.match_sub_rune_1
+			LEFT JOIN runes r5 
+			ON r5.rune_id = mr.match_sub_rune_2
+			LEFT JOIN runes r6 
+			ON r6.rune_id = mr.match_sub_rune_3
+			WHERE md.player_champ = #{champName}
+			AND ROWNUM = 1
+		]]>
+	</select>
+	
+	<!-- 승률 계산을 위해 승리 패배 가져오기 -->
+	<select id = "selectWinLoseForWinRate" resultType = "com.wg.dto.RiotDto.ChampDetailChampionDto">
+		<![CDATA[
+			SELECT COUNT(CASE WHEN winner_team = 100 THEN 1 END) win,
+             	   COUNT(CASE WHEN winner_team = 200 THEN 2 END) lose
+			FROM match_detail md
+			INNER JOIN matchs m
+			ON m.match_id = md.match_id
+			WHERE md.player_champ = #{champName}
+		]]>
+	</select>
+	
+	<!-- 챔피언 이름, 챔피언 사진(url)가져오기 -->
+	<select id = "selectChampNameAndUrl" resultType = "com.wg.dto.RiotDto.ChampDetailChampionDto">
+		<![CDATA[
+			SELECT Champ_name, Champ_url
+			FROM champions
+			WHERE Champ_name = #{champName}
+		]]>
+	</select>
+	
+	<!-- 챔프 이름 한글 번역하기 -->
+	<select id = "seleteEchampNameTranslate" resultType = "java.lang.String">
+		<![CDATA[
+			SELECT DISTINCT(champ_name)
+			FROM champions c
+			INNER JOIN match_detail md
+			ON c.champ_id = md.champ_id
+			WHERE md.player_champ = #{EchampName}
+		]]>
+	</select>
+	
+	<!-- 챔프 이름 영어 번역하기 -->
+	<select id = "selecteKchampNameTranslate" resultType = "java.lang.String">
+		<![CDATA[
+			SELECT DISTINCT(player_champ)
+			FROM match_detail md
+			INNER JOIN champions c
+			ON md.champ_id = c.champ_id
+			WHERE champ_name = #{KchampName}
+		]]>
+	</select>
+	
+	<!-- 챔피언 이름 랜덤으로 가져오기 -->
+	<select id = "selectRandomChampNameByNum" resultType = "java.lang.String">
+		<![CDATA[
+			SELECT champ_name
+			FROM (
+			SELECT ROWNUM rnum, champ_name
+			FROM champions
+			) 
+			WHERE rnum = #{random}		
+		]]>
+	</select>
+</mapper>
